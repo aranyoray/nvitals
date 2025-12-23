@@ -423,9 +423,19 @@ export default function YearlyDualMap() {
     // Show county data
     const countyData = yearlyData[selectedYear]?.[normalizedFips]
     if (countyData) {
+      // Calculate percentile for this county
+      const allDrugRates = Object.values(yearlyData[selectedYear] || {})
+        .map(d => d.DrugDeathRate)
+        .filter((v): v is number => v !== null && v !== undefined)
+
+      const percentile = countyData.DrugDeathRate !== null && countyData.DrugDeathRate !== undefined
+        ? calculatePercentile(countyData.DrugDeathRate, allDrugRates)
+        : null
+
       setHoveredCounty({
         name: fipsToName[normalizedFips],
-        ...countyData
+        ...countyData,
+        percentile
       })
     }
 
@@ -514,11 +524,19 @@ export default function YearlyDualMap() {
     fetchTimeSeries()
   }, [selectedCountyA, selectedCountyB, yearlyData, years])
 
-  const getColorForValue = (value: number | null, isPolitic: boolean): string => {
+  const calculatePercentile = (value: number, allValues: number[]): number => {
+    const sorted = [...allValues].sort((a, b) => a - b)
+    const index = sorted.findIndex(v => v >= value)
+    if (index === -1) return 100
+    return (index / sorted.length) * 100
+  }
+
+  const getColorForValue = (value: number | null, isPolitic: boolean, percentile?: number): string => {
     // Show gray for NA/missing data
     if (value === null || value === undefined) return '#d1d5db'
 
     if (isPolitic) {
+      // Keep political colors the same (red/blue)
       if (value > 40) return '#7f1d1d'
       if (value > 20) return '#dc2626'
       if (value > 0) return '#fca5a5'
@@ -526,11 +544,22 @@ export default function YearlyDualMap() {
       if (value > -40) return '#2563eb'
       return '#1e3a8a'
     } else {
-      if (value > 40) return '#7f1d1d'
-      if (value > 30) return '#dc2626'
-      if (value > 20) return '#f97316'
-      if (value > 10) return '#facc15'
-      return '#22c55e'
+      // Violet/purple gradient for drug death rate
+      // Based on percentiles for better distribution
+      if (percentile !== undefined) {
+        if (percentile >= 90) return '#4c1d95' // Very dark purple
+        if (percentile >= 75) return '#6b21a8' // Dark purple
+        if (percentile >= 60) return '#7e22ce' // Medium-dark purple
+        if (percentile >= 40) return '#a855f7' // Medium purple
+        if (percentile >= 20) return '#c084fc' // Light purple
+        return '#e9d5ff' // Very light lavender
+      }
+      // Fallback to value-based (for backward compatibility)
+      if (value > 40) return '#4c1d95'
+      if (value > 30) return '#6b21a8'
+      if (value > 20) return '#7e22ce'
+      if (value > 10) return '#a855f7'
+      return '#e9d5ff'
     }
   }
 
@@ -550,6 +579,11 @@ export default function YearlyDualMap() {
       return fipsStr.padStart(5, '0')
     }
 
+    // Calculate percentiles for drug death rates
+    const allDrugRates = Object.values(countyData)
+      .map(d => isDrugMap ? (adjustedValues?.[d.fips] ?? d.DrugDeathRate) : null)
+      .filter((v): v is number => v !== null && v !== undefined)
+
     // Use to-string conversion for GEOID to ensure string matching
     const fillExpression: any[] = ['match', ['to-string', ['get', 'GEOID']]]
 
@@ -562,7 +596,13 @@ export default function YearlyDualMap() {
       const value = adjustedValues && adjustedValues[fips]
         ? adjustedValues[fips]
         : (isDrugMap ? data.DrugDeathRate : data.RepublicanMargin)
-      const color = getColorForValue(value, !isDrugMap)
+
+      // Calculate percentile for drug map
+      const percentile = isDrugMap && value !== null && value !== undefined
+        ? calculatePercentile(value, allDrugRates)
+        : undefined
+
+      const color = getColorForValue(value, !isDrugMap, percentile)
       fillExpression.push(normalizedFips, color)
     })
 
@@ -578,7 +618,7 @@ export default function YearlyDualMap() {
         layer.paint['fill-outline-color-transition'] = { duration: 300 }
       }
     }
-    
+
     map.setPaintProperty('counties-fill', 'fill-color', fillExpression as any)
     map.setPaintProperty('counties-fill', 'fill-outline-color', fillExpression as any)
   }
@@ -681,9 +721,19 @@ export default function YearlyDualMap() {
           const data = yearlyData[selectedYear]?.[fips]
 
           if (data) {
+            // Calculate percentile for this county
+            const allDrugRates = Object.values(yearlyData[selectedYear] || {})
+              .map(d => d.DrugDeathRate)
+              .filter((v): v is number => v !== null && v !== undefined)
+
+            const percentile = data.DrugDeathRate !== null && data.DrugDeathRate !== undefined
+              ? calculatePercentile(data.DrugDeathRate, allDrugRates)
+              : null
+
             setHoveredCounty({
               name: countyName,
-              ...data
+              ...data,
+              percentile
             })
             newMap.getCanvas().style.cursor = 'pointer'
           }
@@ -876,27 +926,31 @@ export default function YearlyDualMap() {
       {/* Legends */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="legend-container">
-          <h4 className="legend-title"><strong>Drug Overdose Deaths</strong> <span className="font-normal">(age-adjusted rate)</span></h4>
+          <h4 className="legend-title"><strong>Drug Overdose Deaths</strong> <span className="font-normal">(age-adjusted rate, by percentile)</span></h4>
           <div className="flex gap-2 items-center flex-wrap">
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#22c55e'}}></div>
-              <span>&lt;10</span>
+              <div className="legend-color" style={{backgroundColor: '#e9d5ff'}}></div>
+              <span>0-20th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#facc15'}}></div>
-              <span>10-20</span>
+              <div className="legend-color" style={{backgroundColor: '#c084fc'}}></div>
+              <span>20-40th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#f97316'}}></div>
-              <span>20-30</span>
+              <div className="legend-color" style={{backgroundColor: '#a855f7'}}></div>
+              <span>40-60th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#dc2626'}}></div>
-              <span>30-40</span>
+              <div className="legend-color" style={{backgroundColor: '#7e22ce'}}></div>
+              <span>60-75th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#7f1d1d'}}></div>
-              <span>&gt;40</span>
+              <div className="legend-color" style={{backgroundColor: '#6b21a8'}}></div>
+              <span>75-90th</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color" style={{backgroundColor: '#4c1d95'}}></div>
+              <span>90-100th</span>
             </div>
             <div className="legend-item">
               <div className="legend-color" style={{backgroundColor: '#d1d5db'}}></div>
@@ -1043,6 +1097,11 @@ export default function YearlyDualMap() {
                     ? `${hoveredCounty.DrugDeathRate.toFixed(1)} per 100k`
                     : 'No Data'}
               </div>
+              {hoveredCounty.percentile !== null && hoveredCounty.percentile !== undefined && !hoveredCounty.Is_Suppressed && (
+                <div className="text-xs mt-1" style={{ color: 'var(--accent-blue)' }}>
+                  {hoveredCounty.percentile.toFixed(0)}th percentile
+                </div>
+              )}
             </div>
             <div className="p-3 rounded" style={{ background: 'var(--bg-tertiary)' }}>
               <span className="text-xs block" style={{ color: 'var(--text-secondary)' }}><strong>Suicide Mortality</strong> <span className="font-normal">(age-adjusted rate)</span></span>
