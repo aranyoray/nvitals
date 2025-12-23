@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
 import InnovationIndexMap from '@/components/energy/InnovationIndexMap'
+import ClimateEnergyDashboard from '@/components/energy/ClimateEnergyDashboard'
 
 export default function EnergyFuturesPage() {
   const [selectedView, setSelectedView] = useState<'overview' | 'innovation' | 'climate' | 'migration' | 'disasters'>('overview')
@@ -177,14 +178,18 @@ export default function EnergyFuturesPage() {
         )}
 
         {selectedView === 'climate' && (
-          <div className="panel">
-            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
-              🌡️ Climate-Driven Energy Demand
-            </h2>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              Climate energy forecasting coming soon. Will project cooling and heating energy demand based on
-              temperature projections, humidity, and extreme weather events.
-            </p>
+          <div className="space-y-6">
+            <div className="panel">
+              <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+                🌡️ Climate-Driven Energy Demand (2025-2055)
+              </h2>
+              <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
+                Energy demand projections based on IPCC climate scenarios. RCP 4.5 assumes moderate emissions reduction,
+                while RCP 8.5 represents high emissions "business as usual" trajectory.
+              </p>
+
+              <ClimateEnergyDashboard />
+            </div>
           </div>
         )}
 
