@@ -5,6 +5,7 @@ import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
 import InnovationIndexMap from '@/components/energy/InnovationIndexMap'
 import ClimateEnergyDashboard from '@/components/energy/ClimateEnergyDashboard'
+import MigrationDashboard from '@/components/energy/MigrationDashboard'
 
 export default function EnergyFuturesPage() {
   const [selectedView, setSelectedView] = useState<'overview' | 'innovation' | 'climate' | 'migration' | 'disasters'>('overview')
@@ -194,14 +195,18 @@ export default function EnergyFuturesPage() {
         )}
 
         {selectedView === 'migration' && (
-          <div className="panel">
-            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
-              🚚 Population Migration & Urbanization
-            </h2>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              Migration pattern analysis coming soon. Will visualize rural-to-urban flows, interstate movements,
-              and their impact on regional energy infrastructure requirements.
-            </p>
+          <div className="space-y-6">
+            <div className="panel">
+              <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+                🚚 Population Migration & Urbanization (2025-2055)
+              </h2>
+              <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
+                Migration patterns based on gravity model incorporating economic opportunities, climate comfort, and cost of living.
+                Tracks rural-to-urban flows, interstate migration, and energy infrastructure impacts.
+              </p>
+
+              <MigrationDashboard />
+            </div>
           </div>
         )}
 
