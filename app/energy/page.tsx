@@ -6,6 +6,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 import InnovationIndexMap from '@/components/energy/InnovationIndexMap'
 import ClimateEnergyDashboard from '@/components/energy/ClimateEnergyDashboard'
 import MigrationDashboard from '@/components/energy/MigrationDashboard'
+import DisasterRiskDashboard from '@/components/energy/DisasterRiskDashboard'
 
 export default function EnergyFuturesPage() {
   const [selectedView, setSelectedView] = useState<'overview' | 'innovation' | 'climate' | 'migration' | 'disasters'>('overview')
@@ -211,14 +212,18 @@ export default function EnergyFuturesPage() {
         )}
 
         {selectedView === 'disasters' && (
-          <div className="panel">
-            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
-              ⚠️ Extreme Event Risk & Energy Requirements
-            </h2>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              Disaster risk modeling coming soon. Will project energy needs for emergency response, temporary housing,
-              and infrastructure rebuilding based on historical FEMA data and climate projections.
-            </p>
+          <div className="space-y-6">
+            <div className="panel">
+              <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+                ⚠️ Extreme Event Risk & Energy Requirements (2025-2055)
+              </h2>
+              <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
+                Disaster risk modeling accounting for hurricanes, tornadoes, floods, wildfires, and extreme heat events.
+                Calculates energy needs for emergency response, rescue operations, and infrastructure rebuilding.
+              </p>
+
+              <DisasterRiskDashboard />
+            </div>
           </div>
         )}
 
