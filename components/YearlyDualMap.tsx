@@ -949,27 +949,39 @@ export default function YearlyDualMap() {
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              className="checkbox-item w-6 h-6"
+              className="w-5 h-5 cursor-pointer accent-blue-600"
               checked={mapControlPoverty}
               onChange={(e) => setMapControlPoverty(e.target.checked)}
+              style={{
+                accentColor: '#3b82f6',
+                cursor: 'pointer'
+              }}
             />
             <span className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Control for Poverty Level</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              className="checkbox-item w-6 h-6"
+              className="w-5 h-5 cursor-pointer accent-blue-600"
               checked={mapControlIncome}
               onChange={(e) => setMapControlIncome(e.target.checked)}
+              style={{
+                accentColor: '#3b82f6',
+                cursor: 'pointer'
+              }}
             />
             <span className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Control for Median Income</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              className="checkbox-item w-6 h-6"
+              className="w-5 h-5 cursor-pointer accent-blue-600"
               checked={mapControlUrbanRural}
               onChange={(e) => setMapControlUrbanRural(e.target.checked)}
+              style={{
+                accentColor: '#3b82f6',
+                cursor: 'pointer'
+              }}
             />
             <span className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Control for Urban/Rural</span>
           </label>
@@ -1223,9 +1235,13 @@ export default function YearlyDualMap() {
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
-                        className="checkbox-item"
+                        className="w-4 h-4 cursor-pointer"
                         checked={controlPoverty}
                         onChange={(e) => setControlPoverty(e.target.checked)}
+                        style={{
+                          accentColor: '#3b82f6',
+                          cursor: 'pointer'
+                        }}
                       />
                       <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                         Control for Poverty Rate
@@ -1234,10 +1250,14 @@ export default function YearlyDualMap() {
                     <label className="flex items-center gap-2 cursor-pointer opacity-50">
                       <input
                         type="checkbox"
-                        className="checkbox-item"
+                        className="w-4 h-4 cursor-pointer"
                         checked={controlIncome}
                         onChange={(e) => setControlIncome(e.target.checked)}
                         disabled
+                        style={{
+                          accentColor: '#3b82f6',
+                          cursor: 'not-allowed'
+                        }}
                       />
                       <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                         Control for Median Income (coming soon)
@@ -1246,9 +1266,13 @@ export default function YearlyDualMap() {
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
-                        className="checkbox-item"
+                        className="w-4 h-4 cursor-pointer"
                         checked={controlUrbanRural}
                         onChange={(e) => setControlUrbanRural(e.target.checked)}
+                        style={{
+                          accentColor: '#3b82f6',
+                          cursor: 'pointer'
+                        }}
                       />
                       <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                         Control for Urban/Rural
