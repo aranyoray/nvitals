@@ -7,9 +7,10 @@ import InnovationIndexMap from '@/components/energy/InnovationIndexMap'
 import ClimateEnergyDashboard from '@/components/energy/ClimateEnergyDashboard'
 import MigrationDashboard from '@/components/energy/MigrationDashboard'
 import DisasterRiskDashboard from '@/components/energy/DisasterRiskDashboard'
+import UnifiedForecastDashboard from '@/components/energy/UnifiedForecastDashboard'
 
 export default function EnergyFuturesPage() {
-  const [selectedView, setSelectedView] = useState<'overview' | 'innovation' | 'climate' | 'migration' | 'disasters'>('overview')
+  const [selectedView, setSelectedView] = useState<'overview' | 'innovation' | 'climate' | 'migration' | 'disasters' | 'unified'>('unified')
 
   return (
     <div className="min-h-screen p-4 md:p-8" style={{ background: 'var(--bg-primary)' }}>
@@ -38,6 +39,7 @@ export default function EnergyFuturesPage() {
         {/* Navigation Tabs */}
         <div className="mb-6 flex flex-wrap gap-2 justify-center">
           {[
+            { id: 'unified', label: '30-Year Forecast', icon: '📊' },
             { id: 'overview', label: 'Overview', icon: '🌎' },
             { id: 'innovation', label: 'Innovation Index', icon: '💡' },
             { id: 'climate', label: 'Climate Impact', icon: '🌡️' },
@@ -65,6 +67,22 @@ export default function EnergyFuturesPage() {
         </div>
 
         {/* Content Area */}
+        {selectedView === 'unified' && (
+          <div className="space-y-6">
+            <div className="panel">
+              <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+                📊 Integrated 30-Year Energy Forecast
+              </h2>
+              <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
+                Comprehensive forecast combining ALL factors: Innovation efficiency gains, climate-driven demand changes,
+                migration population shifts, and disaster energy requirements. Compare baseline, moderate, and high-impact scenarios.
+              </p>
+
+              <UnifiedForecastDashboard />
+            </div>
+          </div>
+        )}
+
         {selectedView === 'overview' && (
           <div className="space-y-6">
             {/* Summary Cards */}
