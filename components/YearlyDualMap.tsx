@@ -237,7 +237,11 @@ export default function YearlyDualMap() {
         const dataMap: Record<string, CountyData> = {}
         for (let i = 0; i < counties.length; i++) {
           const county = counties[i] as CountyData
-          dataMap[county.fips] = county
+          // Normalize FIPS code to ensure consistent matching
+          const normalizedFips = county.fips ? String(county.fips).trim().padStart(5, '0') : null
+          if (normalizedFips) {
+            dataMap[normalizedFips] = county
+          }
         }
 
         console.log(`✓ Loaded ${year} data from ${url}`)
@@ -312,7 +316,9 @@ export default function YearlyDualMap() {
         // Extract county names from GeoJSON with state abbreviations
         const names: Record<string, string> = {}
         geojson.features.forEach((feature: any) => {
-          const fips = feature.properties.GEOID
+          const geoidRaw = feature.properties.GEOID
+          // Normalize GEOID to ensure consistent matching
+          const fips = geoidRaw ? String(geoidRaw).trim().padStart(5, '0') : null
           const name = feature.properties.NAME
           const stateFips = feature.properties.STATEFP
           if (fips && name && stateFips) {
@@ -362,9 +368,17 @@ export default function YearlyDualMap() {
   }, [searchQuery, fipsToName])
 
   const handleCountySelect = (fips: string) => {
+    // Normalize FIPS for matching
+    const normalizedFips = fips ? String(fips).trim().padStart(5, '0') : null
+    if (!normalizedFips) return
+
     // Find the county feature in GeoJSON to get its center
     if (geojsonData && map1.current && map2.current) {
-      const feature = geojsonData.features.find((f: any) => f.properties.GEOID === fips)
+      const feature = geojsonData.features.find((f: any) => {
+        const geoidRaw = f.properties.GEOID
+        const geoidNormalized = geoidRaw ? String(geoidRaw).trim().padStart(5, '0') : null
+        return geoidNormalized === normalizedFips
+      })
 
       if (feature) {
         // Calculate bounding box center
@@ -407,10 +421,10 @@ export default function YearlyDualMap() {
     }
 
     // Show county data
-    const countyData = yearlyData[selectedYear]?.[fips]
+    const countyData = yearlyData[selectedYear]?.[normalizedFips]
     if (countyData) {
       setHoveredCounty({
-        name: fipsToName[fips],
+        name: fipsToName[normalizedFips],
         ...countyData
       })
     }
@@ -528,15 +542,28 @@ export default function YearlyDualMap() {
   ) => {
     if (!map || !map.getLayer('counties-fill')) return
 
-    const fillExpression: any[] = ['match', ['get', 'GEOID']]
+    // Normalize FIPS codes to ensure proper matching
+    const normalizeFips = (fips: string | number | null | undefined): string => {
+      if (fips === null || fips === undefined) return ''
+      const fipsStr = String(fips).trim()
+      // Ensure 5-digit zero-padded format
+      return fipsStr.padStart(5, '0')
+    }
+
+    // Use to-string conversion for GEOID to ensure string matching
+    const fillExpression: any[] = ['match', ['to-string', ['get', 'GEOID']]]
 
     Object.entries(countyData).forEach(([fips, data]) => {
+      // Normalize FIPS code
+      const normalizedFips = normalizeFips(fips)
+      if (!normalizedFips) return
+
       // Use adjusted values if available, otherwise use raw data
       const value = adjustedValues && adjustedValues[fips]
         ? adjustedValues[fips]
         : (isDrugMap ? data.DrugDeathRate : data.RepublicanMargin)
       const color = getColorForValue(value, !isDrugMap)
-      fillExpression.push(fips, color)
+      fillExpression.push(normalizedFips, color)
     })
 
     fillExpression.push('#e5e7eb')
@@ -645,7 +672,11 @@ export default function YearlyDualMap() {
       newMap.on('mousemove', 'counties-fill', (e) => {
         if (e.features && e.features.length > 0) {
           const feature = e.features[0]
-          const fips = feature.properties?.GEOID
+          // Normalize GEOID to ensure proper matching
+          const geoidRaw = feature.properties?.GEOID
+          const fips = geoidRaw ? String(geoidRaw).trim().padStart(5, '0') : null
+          if (!fips) return
+
           const countyName = countyNames[fips] || feature.properties?.NAME
           const data = yearlyData[selectedYear]?.[fips]
 
