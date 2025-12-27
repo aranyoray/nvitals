@@ -199,7 +199,7 @@ export default function Home() {
                     style={{ color: 'var(--text-secondary)' }}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="font-bold">Drug Overdose Deaths</span> <span className="font-normal">(age-adjusted rate)</span> <SortIndicator column="DrugDeaths" />
+                      <span className="font-bold">Drug Overdose Rate</span> <span className="font-normal">(per 100k)</span> <SortIndicator column="DrugDeaths" />
                     </div>
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}><span className="font-bold">Suicide Severity</span></th>
@@ -209,7 +209,7 @@ export default function Home() {
                     style={{ color: 'var(--text-secondary)' }}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="font-bold">Suicide Mortality</span> <span className="font-normal">(age-adjusted rate)</span> <SortIndicator column="SuicideDeaths" />
+                      <span className="font-bold">Suicide Rate</span> <span className="font-normal">(per 100k)</span> <SortIndicator column="SuicideDeaths" />
                     </div>
                   </th>
                   <th
@@ -300,14 +300,14 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="panel">
-              <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Average Deaths</h3>
+              <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Average Mortality Rates</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-secondary)' }}><span className="font-bold">Drug Overdose Deaths</span> <span className="font-normal">(age-adjusted rate)</span>:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}><span className="font-bold">Drug Overdose Rate</span> <span className="font-normal">(per 100k)</span>:</span>
                   <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{summary?.avg_drug_deaths?.toFixed(1)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-secondary)' }}><span className="font-bold">Suicide Mortality</span> <span className="font-normal">(age-adjusted rate)</span>:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}><span className="font-bold">Suicide Rate</span> <span className="font-normal">(per 100k)</span>:</span>
                   <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{summary?.avg_suicide_deaths?.toFixed(1)}</span>
                 </div>
               </div>
@@ -317,7 +317,7 @@ export default function Home() {
               <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Data Completeness</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-secondary)' }}><span className="font-bold">Drug Overdose Deaths</span> <span className="font-normal">(age-adjusted rate)</span>:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}><span className="font-bold">Drug Overdose Data</span>:</span>
                   <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{summary?.completeness?.drug_deaths_pct?.toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between">
@@ -506,7 +506,7 @@ export default function Home() {
                 <ul className="list-disc list-inside mb-6 space-y-2" style={{ color: 'var(--text-secondary)' }}>
                   <li><strong style={{ color: 'var(--text-primary)' }}>CDC WONDER Multiple Cause of Death Files:</strong> County-level overdose and suicide mortality counts and age-adjusted rates</li>
                   <li><strong style={{ color: 'var(--text-primary)' }}>CDC PLACES:</strong> Local health data including poor mental health days at county level</li>
-                  <li><strong style={{ color: 'var(--text-primary)' }}>MIT Election Data & Science Lab:</strong> County presidential election returns (2000-2024)</li>
+                  <li><strong style={{ color: 'var(--text-primary)' }}>David Leip's Atlas of U.S. Presidential Elections:</strong> County-level presidential election results (2000-2024), federal elections only</li>
                   <li><strong style={{ color: 'var(--text-primary)' }}>American Community Survey (ACS) 5-Year:</strong> Poverty rates, median household income, race/ethnicity, education</li>
                   <li><strong style={{ color: 'var(--text-primary)' }}>County Health Rankings:</strong> Violent crime proxy measures</li>
                   <li><strong style={{ color: 'var(--text-primary)' }}>Census TIGER/Line Shapefiles:</strong> Primary roads (MTFCC S1100) for interstate proximity calculations</li>
@@ -544,7 +544,7 @@ export default function Home() {
                   <li>Haffajee, R. L., et al. (2019). Characteristics of US counties with high opioid overdose mortality and low OUD treatment capacity. <em>JAMA Network Open, 2(6)</em>, e196373.</li>
                   <li>Kariisa, M., et al. (2022). Vital signs: Drug overdose deaths by selected sociodemographics, 2019–2020. <em>MMWR, 71(29)</em>, 940–947.</li>
                   <li>Goodwin, J. S., et al. (2018). Association of chronic opioid use with presidential voting patterns. <em>JAMA Network Open, 1(2)</em>, e180450.</li>
-                  <li>MIT Election Data and Science Lab. (2018). County Presidential Election Returns 2000–2024. <em>Harvard Dataverse</em>.</li>
+                  <li>Leip, David. <em>David Leip's Atlas of U.S. Presidential Elections</em>. Available at: uselectionatlas.org (accessed 2024).</li>
                 </ul>
               </div>
             )}
@@ -555,7 +555,7 @@ export default function Home() {
         <div className="mt-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
           <p>Data covers {summary?.years?.join(', ')} | Analysis based on county-level aggregated data</p>
           <p className="mt-2">
-            <strong style={{ color: 'var(--text-secondary)' }}>Key Finding:</strong> Correlation between Republican voting margin and <strong>drug overdose deaths</strong> <span className="font-normal">(age-adjusted rate)</span>: {summary?.avg_correlation?.toFixed(3)}
+            <strong style={{ color: 'var(--text-secondary)' }}>Key Finding:</strong> Correlation between Republican voting margin and <strong>drug overdose rate</strong> <span className="font-normal">(per 100k)</span>: {summary?.avg_correlation?.toFixed(3)}
           </p>
         </div>
       </div>

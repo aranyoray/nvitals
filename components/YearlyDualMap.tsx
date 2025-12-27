@@ -215,6 +215,20 @@ export default function YearlyDualMap() {
   }, [searchQueryB, fipsToName])
 
   const loadYearData = async (year: string): Promise<Record<string, CountyData>> => {
+    // Check cache first
+    const cacheKey = `nvitals_year_${year}_v1`
+    const cachedData = localStorage.getItem(cacheKey)
+    if (cachedData) {
+      try {
+        const dataMap = JSON.parse(cachedData)
+        console.log(`✓ Loaded ${year} data from cache`)
+        return dataMap
+      } catch (e) {
+        console.warn(`Failed to parse cached ${year} data, will reload`)
+        localStorage.removeItem(cacheKey)
+      }
+    }
+
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 30000)
     const urls = [
@@ -244,6 +258,13 @@ export default function YearlyDualMap() {
           }
         }
 
+        // Cache the data
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(dataMap))
+        } catch (e) {
+          console.warn(`Failed to cache ${year} data in localStorage`)
+        }
+
         console.log(`✓ Loaded ${year} data from ${url}`)
         return dataMap
       } catch (error) {
@@ -265,42 +286,63 @@ export default function YearlyDualMap() {
       try {
         setLoadingProgress({ current: 1, total: 3, filename: 'counties.geojson' })
 
-        // Try static file first, then API route as fallback
-        const geojsonUrls = ['/data/us_counties.geojson', '/api/geojson']
+        // Check localStorage cache for GeoJSON
         let geojson = null
-        let lastError = null
-
-        for (const url of geojsonUrls) {
+        const cachedGeoJSON = localStorage.getItem('nvitals_geojson_v1')
+        if (cachedGeoJSON) {
           try {
-            console.log(`Trying to load GeoJSON from: ${url}`)
-            const geojsonResponse = await fetch(url, { signal: controller.signal })
-            console.log(`Response status: ${geojsonResponse.status}`)
-
-            if (geojsonResponse.ok) {
-              const data = await geojsonResponse.json()
-              if (data.error) {
-                console.error(`API returned error:`, data)
-                lastError = new Error(data.error + ': ' + (data.details || data.path || ''))
-                continue
-              }
-              geojson = data
-              console.log(`✓ Loaded GeoJSON from ${url} with ${geojson.features?.length || 0} features`)
-              break
-            } else {
-              const errorText = await geojsonResponse.text()
-              console.warn(`Failed to load GeoJSON from ${url}: ${geojsonResponse.status} - ${errorText}`)
-              lastError = new Error(`HTTP ${geojsonResponse.status}: ${errorText}`)
-            }
-          } catch (err) {
-            console.error(`Error loading GeoJSON from ${url}:`, err)
-            lastError = err instanceof Error ? err : new Error(String(err))
+            geojson = JSON.parse(cachedGeoJSON)
+            console.log('✓ Loaded GeoJSON from cache')
+          } catch (e) {
+            console.warn('Failed to parse cached GeoJSON, will reload')
+            localStorage.removeItem('nvitals_geojson_v1')
           }
         }
 
+        // If not in cache, fetch from network
         if (!geojson) {
-          const errorMsg = `Failed to load GeoJSON from all sources. Last error: ${lastError?.message || 'Unknown error'}`
-          console.error(errorMsg)
-          throw new Error(errorMsg)
+          // Try static file first, then API route as fallback
+          const geojsonUrls = ['/data/us_counties.geojson', '/api/geojson']
+          let lastError = null
+
+          for (const url of geojsonUrls) {
+            try {
+              console.log(`Trying to load GeoJSON from: ${url}`)
+              const geojsonResponse = await fetch(url, { signal: controller.signal })
+              console.log(`Response status: ${geojsonResponse.status}`)
+
+              if (geojsonResponse.ok) {
+                const data = await geojsonResponse.json()
+                if (data.error) {
+                  console.error(`API returned error:`, data)
+                  lastError = new Error(data.error + ': ' + (data.details || data.path || ''))
+                  continue
+                }
+                geojson = data
+                console.log(`✓ Loaded GeoJSON from ${url} with ${geojson.features?.length || 0} features`)
+                // Cache the GeoJSON
+                try {
+                  localStorage.setItem('nvitals_geojson_v1', JSON.stringify(geojson))
+                } catch (e) {
+                  console.warn('Failed to cache GeoJSON in localStorage (quota exceeded?)')
+                }
+                break
+              } else {
+                const errorText = await geojsonResponse.text()
+                console.warn(`Failed to load GeoJSON from ${url}: ${geojsonResponse.status} - ${errorText}`)
+                lastError = new Error(`HTTP ${geojsonResponse.status}: ${errorText}`)
+              }
+            } catch (err) {
+              console.error(`Error loading GeoJSON from ${url}:`, err)
+              lastError = err instanceof Error ? err : new Error(String(err))
+            }
+          }
+
+          if (!geojson) {
+            const errorMsg = `Failed to load GeoJSON from all sources. Last error: ${lastError?.message || 'Unknown error'}`
+            console.error(errorMsg)
+            throw new Error(errorMsg)
+          }
         }
 
         setGeojsonData(geojson)
@@ -655,15 +697,41 @@ export default function YearlyDualMap() {
         data: geojsonData
       })
 
+      // Build color expression BEFORE adding the layer
+      const countyData = yearlyData[selectedYear]
+      const allDrugRates = countyData ? Object.values(countyData)
+        .map(d => isDrugMap ? d.DrugDeathRate : null)
+        .filter((v): v is number => v !== null && v !== undefined)
+        : []
+
+      const fillExpression: any[] = ['match', ['to-string', ['get', 'GEOID']]]
+
+      if (countyData) {
+        Object.entries(countyData).forEach(([fips, data]) => {
+          const normalizedFips = fips ? String(fips).trim().padStart(5, '0') : null
+          if (!normalizedFips) return
+
+          const value = isDrugMap ? data.DrugDeathRate : data.RepublicanMargin
+          const percentile = isDrugMap && value !== null && value !== undefined
+            ? calculatePercentile(value, allDrugRates)
+            : undefined
+
+          const color = getColorForValue(value, !isDrugMap, percentile)
+          fillExpression.push(normalizedFips, color)
+        })
+      }
+
+      fillExpression.push('#d1d5db') // default gray for missing data
+
       newMap.addLayer({
         id: 'counties-fill',
         type: 'fill',
         source: 'counties',
         paint: {
-          'fill-color': '#e5e7eb',
+          'fill-color': fillExpression as any,
           'fill-opacity': 1,
           'fill-antialias': true,
-          'fill-outline-color': '#e5e7eb'
+          'fill-outline-color': fillExpression as any
         }
       })
 
@@ -701,12 +769,6 @@ export default function YearlyDualMap() {
         .catch(error => {
           console.error('Error loading state borders:', error)
         })
-
-      // Initial color update
-      const countyData = yearlyData[selectedYear]
-      if (countyData) {
-        updateMapColors(newMap, countyData, isDrugMap)
-      }
 
       // Add hover
       newMap.on('mousemove', 'counties-fill', (e) => {
@@ -926,7 +988,7 @@ export default function YearlyDualMap() {
       {/* Legends */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="legend-container">
-          <h4 className="legend-title"><strong>Drug Overdose Deaths</strong> <span className="font-normal">(age-adjusted rate, by percentile)</span></h4>
+          <h4 className="legend-title"><strong>Drug Overdose Rate</strong> <span className="font-normal">(per 100k, by percentile)</span></h4>
           <div className="flex gap-2 items-center flex-wrap">
             <div className="legend-item">
               <div className="legend-color" style={{backgroundColor: '#e9d5ff'}}></div>
@@ -1046,7 +1108,7 @@ export default function YearlyDualMap() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="relative">
           <div className="absolute top-2 left-2 px-3 py-1 rounded shadow z-10 font-semibold" style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
-            <strong>Drug Overdose Deaths</strong> <span className="font-normal">(age-adjusted rate)</span> ({selectedYear})
+            <strong>Drug Overdose Rate</strong> <span className="font-normal">(per 100k)</span> ({selectedYear})
           </div>
           <div ref={mapContainer1} className="h-[500px] rounded-lg shadow-lg" style={{ border: '1px solid var(--border-color)' }} />
         </div>
@@ -1079,22 +1141,12 @@ export default function YearlyDualMap() {
           <h3 className="font-bold text-xl mb-3" style={{ color: 'var(--text-primary)' }}>{hoveredCounty.name} County ({selectedYear})</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             <div className="p-3 rounded" style={{ background: 'var(--bg-tertiary)' }}>
-              <span className="text-xs block" style={{ color: 'var(--text-secondary)' }}><strong>Drug Overdose Deaths</strong> <span className="font-normal">(age-adjusted rate)</span></span>
-              <div className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
-                {hoveredCounty.Is_Suppressed
-                  ? '0 (Suppressed)'
-                  : hoveredCounty.DrugDeaths !== null
-                    ? hoveredCounty.DrugDeaths.toFixed(1)
-                    : 'No Data'}
-              </div>
-            </div>
-            <div className="p-3 rounded" style={{ background: 'var(--bg-tertiary)' }}>
-              <span className="text-xs block" style={{ color: 'var(--text-secondary)' }}><strong>Drug Death Rate</strong> <span className="font-normal">(age-adjusted rate)</span></span>
+              <span className="text-xs block" style={{ color: 'var(--text-secondary)' }}><strong>Drug Overdose Rate</strong> <span className="font-normal">(per 100k)</span></span>
               <div className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
                 {hoveredCounty.Is_Suppressed
                   ? 'Suppressed'
                   : hoveredCounty.DrugDeathRate !== null
-                    ? `${hoveredCounty.DrugDeathRate.toFixed(1)} per 100k`
+                    ? hoveredCounty.DrugDeathRate.toFixed(1)
                     : 'No Data'}
               </div>
               {hoveredCounty.percentile !== null && hoveredCounty.percentile !== undefined && !hoveredCounty.Is_Suppressed && (
@@ -1104,10 +1156,10 @@ export default function YearlyDualMap() {
               )}
             </div>
             <div className="p-3 rounded" style={{ background: 'var(--bg-tertiary)' }}>
-              <span className="text-xs block" style={{ color: 'var(--text-secondary)' }}><strong>Suicide Mortality</strong> <span className="font-normal">(age-adjusted rate)</span></span>
+              <span className="text-xs block" style={{ color: 'var(--text-secondary)' }}><strong>Suicide Rate</strong> <span className="font-normal">(per 100k)</span></span>
               <div className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
                 {hoveredCounty.SuicideRate !== null
-                  ? `${hoveredCounty.SuicideRate.toFixed(1)} per 100k`
+                  ? hoveredCounty.SuicideRate.toFixed(1)
                   : 'N/A'}
               </div>
             </div>
@@ -1366,9 +1418,9 @@ export default function YearlyDualMap() {
                         const dataB = yearlyData[selectedYear]?.[selectedCountyB]
 
                         const labels: Record<string, string> = {
-                          DrugDeaths: 'Drug Overdose Deaths (age-adjusted rate)',
-                          DrugDeathRate: 'Drug Death Rate (age-adjusted rate, per 100k)',
-                          SuicideRate: 'Suicide Mortality (age-adjusted rate, per 100k)',
+                          DrugDeaths: 'Drug Overdose Rate (per 100k)',
+                          DrugDeathRate: 'Drug Overdose Rate (per 100k)',
+                          SuicideRate: 'Suicide Rate (per 100k)',
                           RepublicanMargin: 'Republican Margin (%)',
                           UnemploymentRate: 'Unemployment Rate (%)',
                           PovertyRate: 'Poverty Rate (%)'
@@ -1457,8 +1509,8 @@ export default function YearlyDualMap() {
 
                       {['DrugDeathRate', 'SuicideRate', 'UnemploymentRate'].map((metric) => {
                         const labels: Record<string, string> = {
-                          DrugDeathRate: 'Overdose Mortality Trends (2018-2023)',
-                          SuicideRate: 'Suicide Mortality Trends (2018-2023)',
+                          DrugDeathRate: 'Drug Overdose Rate Trends (2018-2023)',
+                          SuicideRate: 'Suicide Rate Trends (2018-2023)',
                           UnemploymentRate: 'Unemployment Rate Trends (2018-2023)'
                         }
 
