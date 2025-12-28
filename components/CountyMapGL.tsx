@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import maplibregl from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+
+// Set Mapbox access token
+mapboxgl.accessToken = 'pk.eyJ1Ijoicm9zaGFuLW5haWsiLCJhIjoiY21qb2s4czczMnVrODNlcTE0OXh0amU0NiJ9.7plv87D9YQ2YCmgCsTKbng'
 
 interface CountyData {
   fips: string
@@ -18,7 +21,7 @@ interface CountyData {
 
 export default function CountyMapGL() {
   const mapContainer = useRef<HTMLDivElement>(null)
-  const map = useRef<maplibregl.Map | null>(null)
+  const map = useRef<mapboxgl.Map | null>(null)
   const [countyData, setCountyData] = useState<Record<string, CountyData>>({})
   const [metric, setMetric] = useState<'drugDeaths' | 'republicanMargin'>('drugDeaths')
   const [hoveredCounty, setHoveredCounty] = useState<any>(null)
@@ -43,7 +46,7 @@ export default function CountyMapGL() {
   useEffect(() => {
     if (!mapContainer.current || map.current) return
 
-    map.current = new maplibregl.Map({
+    map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: {
         version: 8,
@@ -67,7 +70,7 @@ export default function CountyMapGL() {
       zoom: 3.5
     })
 
-    map.current.addControl(new maplibregl.NavigationControl(), 'top-right')
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right')
 
     return () => {
       map.current?.remove()
@@ -168,14 +171,14 @@ export default function CountyMapGL() {
 
     fillExpression.push('#e5e7eb')
 
-    map.current.setPaintProperty('counties-fill', 'fill-color', fillExpression)
-    map.current.setPaintProperty('counties-fill', 'fill-outline-color', fillExpression)
+    map.current.setPaintProperty('counties-fill', 'fill-color', fillExpression as any)
+    map.current.setPaintProperty('counties-fill', 'fill-outline-color', fillExpression as any)
   }
 
   useEffect(() => {
     if (!map.current) return
 
-    const handleMouseMove = (e: maplibregl.MapMouseEvent) => {
+    const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
       if (!map.current) return
       const features = map.current.queryRenderedFeatures(e.point, {
         layers: ['counties-fill']

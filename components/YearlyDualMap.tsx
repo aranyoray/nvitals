@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import maplibregl from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+
+// Set Mapbox access token
+mapboxgl.accessToken = 'pk.eyJ1Ijoicm9zaGFuLW5haWsiLCJhIjoiY21qb2s4czczMnVrODNlcTE0OXh0amU0NiJ9.7plv87D9YQ2YCmgCsTKbng'
 
 interface CountyData {
   fips: string
@@ -21,8 +24,8 @@ interface CountyData {
 export default function YearlyDualMap() {
   const mapContainer1 = useRef<HTMLDivElement>(null)
   const mapContainer2 = useRef<HTMLDivElement>(null)
-  const map1 = useRef<maplibregl.Map | null>(null)
-  const map2 = useRef<maplibregl.Map | null>(null)
+  const map1 = useRef<mapboxgl.Map | null>(null)
+  const map2 = useRef<mapboxgl.Map | null>(null)
   const [yearlyData, setYearlyData] = useState<Record<string, Record<string, CountyData>>>({})
   const [selectedYear, setSelectedYear] = useState<string>('2023')
   const [hoveredCounty, setHoveredCounty] = useState<any>(null)
@@ -606,7 +609,7 @@ export default function YearlyDualMap() {
   }
 
   const updateMapColors = (
-    map: maplibregl.Map,
+    map: mapboxgl.Map,
     countyData: Record<string, CountyData>,
     isDrugMap: boolean,
     adjustedValues?: Record<string, number>
@@ -666,7 +669,7 @@ export default function YearlyDualMap() {
   }
 
   const createMap = (container: HTMLDivElement, isDrugMap: boolean) => {
-    const newMap = new maplibregl.Map({
+    const newMap = new mapboxgl.Map({
       container: container,
       style: {
         version: 8,
@@ -683,7 +686,7 @@ export default function YearlyDualMap() {
       zoom: 3.5
     })
 
-    newMap.addControl(new maplibregl.NavigationControl(), 'top-right')
+    newMap.addControl(new mapboxgl.NavigationControl(), 'top-right')
 
     newMap.on('load', () => {
       // Use cached geojson data instead of fetching again
