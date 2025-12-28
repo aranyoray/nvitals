@@ -7,6 +7,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 export default function Home() {
   const [summary, setSummary] = useState<any>(null)
   const [stateData, setStateData] = useState<any[]>([])
+  const [stateFederalOutcomes, setStateFederalOutcomes] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [loadStartTime] = useState(Date.now())
   const [loadTime, setLoadTime] = useState<number | null>(null)
@@ -89,13 +90,19 @@ export default function Home() {
         .then(r => {
           if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`)
           return r.json()
+        }),
+      fetch('/data/state_federal_outcomes.json', { signal: controller.signal })
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`)
+          return r.json()
         })
-    ]).then(([summaryData, stateData]) => {
+    ]).then(([summaryData, stateData, federalOutcomes]) => {
       clearTimeout(timeout)
       const timeElapsed = ((Date.now() - loadStartTime) / 1000).toFixed(1)
       setLoadTime(parseFloat(timeElapsed))
       setSummary(summaryData)
       setStateData(stateData)
+      setStateFederalOutcomes(federalOutcomes)
       setLoading(false)
     }).catch(error => {
       clearTimeout(timeout)
@@ -177,7 +184,8 @@ export default function Home() {
         {/* States Table */}
         <div className="data-table">
           <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border-color)' }}>
-            <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>State-Wise Summary of Drug and Suicide Mortality and Political Lean</h3>
+            <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>State-Wise Summary: Mortality Rates & 2024 Federal Election Outcomes</h3>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>State names colored by 2024 presidential election winner (federal results)</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full">
@@ -212,13 +220,9 @@ export default function Home() {
                       <span className="font-bold">Suicide Rate</span> <span className="font-normal">(per 100k)</span> <SortIndicator column="SuicideDeaths" />
                     </div>
                   </th>
-                  <th
-                    onClick={() => handleSort('RepublicanMargin')}
-                    className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-opacity-10 hover:bg-blue-500 transition-colors"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                     <div className="flex items-center gap-2">
-                      Political Lean <SortIndicator column="RepublicanMargin" />
+                      2024 Federal Outcome
                     </div>
                   </th>
                   <th
@@ -239,39 +243,39 @@ export default function Home() {
                   const maxDrugDeaths = Math.max(...validStates.map((s: any) => s.DrugDeaths || 0))
                   const maxSuicideDeaths = Math.max(...validStates.map((s: any) => s.SuicideDeaths || 0))
 
-                  return sortedStateData(validStates).map((state: any, idx: number) => (
-                    <tr key={idx}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
-                        {state.state_name || state.state_fips}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="w-8 h-8 rounded-full mx-auto" style={{ background: getSeverityColor(state.DrugDeaths, maxDrugDeaths) }}></div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
-                        {state.DrugDeaths?.toFixed(1) || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="w-8 h-8 rounded-full mx-auto" style={{ background: getSeverityColor(state.SuicideDeaths, maxSuicideDeaths) }}></div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
-                        {state.SuicideDeaths?.toFixed(1) || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
-                        <span style={{
-                          color: state.RepublicanMargin
-                            ? state.RepublicanMargin > 0
-                              ? '#dc2626'  // Red for Republican
-                              : '#2563eb'  // Blue for Democrat
-                            : 'var(--text-primary)'
-                        }}>
-                          {state.RepublicanMargin ? `${state.RepublicanMargin > 0 ? '+' : ''}${state.RepublicanMargin.toFixed(1)}%` : 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
-                        {state.n_counties || 'N/A'}
-                      </td>
-                    </tr>
-                  ))
+                  return sortedStateData(validStates).map((state: any, idx: number) => {
+                    // Get federal election outcome for 2024
+                    const federalOutcome = stateFederalOutcomes?.['2024']?.[state.state_name] || null
+                    const stateColor = federalOutcome === 'R' ? '#dc2626' : federalOutcome === 'D' ? '#2563eb' : 'var(--text-primary)'
+
+                    return (
+                      <tr key={idx}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold" style={{ color: stateColor }}>
+                          {state.state_name || state.state_fips}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div className="w-8 h-8 rounded-full mx-auto" style={{ background: getSeverityColor(state.DrugDeaths, maxDrugDeaths) }}></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
+                          {state.DrugDeaths?.toFixed(1) || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div className="w-8 h-8 rounded-full mx-auto" style={{ background: getSeverityColor(state.SuicideDeaths, maxSuicideDeaths) }}></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
+                          {state.SuicideDeaths?.toFixed(1) || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
+                          <span style={{ color: stateColor }}>
+                            {federalOutcome === 'R' ? 'Republican' : federalOutcome === 'D' ? 'Democrat' : 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
+                          {state.n_counties || 'N/A'}
+                        </td>
+                      </tr>
+                    )
+                  })
                 })()}
               </tbody>
             </table>
