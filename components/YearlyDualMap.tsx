@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import TutorialModal from './TutorialModal'
+import CountyReportModal from './CountyReportModal'
 
 // Set Mapbox access token
 mapboxgl.accessToken = 'pk.eyJ1Ijoicm9zaGFuLW5haWsiLCJhIjoiY21qb2s4czczMnVrODNlcTE0OXh0amU0NiJ9.7plv87D9YQ2YCmgCsTKbng'
@@ -57,6 +59,8 @@ export default function YearlyDualMap() {
   const [mapControlPoverty, setMapControlPoverty] = useState(false)
   const [mapControlIncome, setMapControlIncome] = useState(false)
   const [mapControlUrbanRural, setMapControlUrbanRural] = useState(false)
+  const [clickedCounty, setClickedCounty] = useState<{fips: string, name: string, data: CountyData} | null>(null)
+  const [showCountyReport, setShowCountyReport] = useState(false)
 
   const years = ['2018', '2019', '2020', '2021', '2022', '2023']
 
@@ -732,9 +736,7 @@ export default function YearlyDualMap() {
         source: 'counties',
         paint: {
           'fill-color': fillExpression as any,
-          'fill-opacity': 1,
-          'fill-antialias': true,
-          'fill-outline-color': fillExpression as any
+          'fill-opacity': 0.85
         }
       })
 
@@ -743,9 +745,9 @@ export default function YearlyDualMap() {
         type: 'line',
         source: 'counties',
         paint: {
-          'line-color': '#ffffff',
-          'line-width': 0.3,
-          'line-opacity': 0.3
+          'line-color': '#666666',
+          'line-width': 1,
+          'line-opacity': 0.7
         }
       })
 
@@ -764,8 +766,8 @@ export default function YearlyDualMap() {
             source: 'states',
             paint: {
               'line-color': '#000000',
-              'line-width': 2.5,
-              'line-opacity': 0.8
+              'line-width': 2,
+              'line-opacity': 1
             }
           })
         })
@@ -808,6 +810,28 @@ export default function YearlyDualMap() {
       newMap.on('mouseleave', 'counties-fill', () => {
         setHoveredCounty(null)
         newMap.getCanvas().style.cursor = ''
+      })
+
+      // Add click handler
+      newMap.on('click', 'counties-fill', (e) => {
+        if (e.features && e.features.length > 0) {
+          const feature = e.features[0]
+          const geoidRaw = feature.properties?.GEOID
+          const fips = geoidRaw ? String(geoidRaw).trim().padStart(5, '0') : null
+          if (!fips) return
+
+          const countyName = countyNames[fips] || feature.properties?.NAME
+          const data = yearlyData[selectedYear]?.[fips]
+
+          if (data && countyName) {
+            setClickedCounty({
+              fips,
+              name: countyName,
+              data
+            })
+            setShowCountyReport(true)
+          }
+        }
       })
     })
 
@@ -1782,6 +1806,24 @@ export default function YearlyDualMap() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Tutorial Modal */}
+      <TutorialModal />
+
+      {/* County Report Modal */}
+      {clickedCounty && (
+        <CountyReportModal
+          isOpen={showCountyReport}
+          onClose={() => {
+            setShowCountyReport(false)
+            setClickedCounty(null)
+          }}
+          countyFips={clickedCounty.fips}
+          countyName={clickedCounty.name}
+          countyData={clickedCounty.data}
+          selectedYear={selectedYear}
+        />
       )}
     </div>
   )
