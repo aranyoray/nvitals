@@ -103,7 +103,8 @@ export default function CountyMapGL() {
             source: 'counties',
             paint: {
               'fill-color': '#94a3b8',
-              'fill-opacity': 0.85
+              'fill-opacity': 1,
+              'fill-outline-color': '#94a3b8'
             }
           })
 
@@ -112,9 +113,9 @@ export default function CountyMapGL() {
             type: 'line',
             source: 'counties',
             paint: {
-              'line-color': '#666666',
-              'line-width': 1,
-              'line-opacity': 0.7
+              'line-color': '#ffffff',
+              'line-width': 0.5,
+              'line-opacity': 0.2
             }
           })
 
@@ -170,6 +171,7 @@ export default function CountyMapGL() {
     fillExpression.push('#e5e7eb')
 
     map.current.setPaintProperty('counties-fill', 'fill-color', fillExpression as any)
+    map.current.setPaintProperty('counties-fill', 'fill-outline-color', fillExpression as any)
   }
 
   useEffect(() => {

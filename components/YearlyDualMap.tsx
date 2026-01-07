@@ -593,22 +593,22 @@ export default function YearlyDualMap() {
       if (value > -40) return '#2563eb'
       return '#1e3a8a'
     } else {
-      // Violet/purple gradient for drug death rate
+      // Brown/orange gradient for drug death rate
       // Based on percentiles for better distribution
       if (percentile !== undefined) {
-        if (percentile >= 90) return '#4c1d95' // Very dark purple
-        if (percentile >= 75) return '#6b21a8' // Dark purple
-        if (percentile >= 60) return '#7e22ce' // Medium-dark purple
-        if (percentile >= 40) return '#a855f7' // Medium purple
-        if (percentile >= 20) return '#c084fc' // Light purple
-        return '#e9d5ff' // Very light lavender
+        if (percentile >= 90) return '#7f1d1d' // Very dark brown
+        if (percentile >= 75) return '#b45309' // Dark brown-orange
+        if (percentile >= 60) return '#ea580c' // Orange
+        if (percentile >= 40) return '#fb923c' // Medium orange
+        if (percentile >= 20) return '#fdba74' // Light orange
+        return '#fed7aa' // Very light tan
       }
       // Fallback to value-based (for backward compatibility)
-      if (value > 40) return '#4c1d95'
-      if (value > 30) return '#6b21a8'
-      if (value > 20) return '#7e22ce'
-      if (value > 10) return '#a855f7'
-      return '#e9d5ff'
+      if (value > 40) return '#7f1d1d'
+      if (value > 30) return '#b45309'
+      if (value > 20) return '#ea580c'
+      if (value > 10) return '#fb923c'
+      return '#fed7aa'
     }
   }
 
@@ -736,7 +736,8 @@ export default function YearlyDualMap() {
         source: 'counties',
         paint: {
           'fill-color': fillExpression as any,
-          'fill-opacity': 0.85
+          'fill-opacity': 1,
+          'fill-outline-color': fillExpression as any
         }
       })
 
@@ -745,9 +746,9 @@ export default function YearlyDualMap() {
         type: 'line',
         source: 'counties',
         paint: {
-          'line-color': '#666666',
-          'line-width': 1,
-          'line-opacity': 0.7
+          'line-color': '#ffffff',
+          'line-width': 0.5,
+          'line-opacity': 0.2
         }
       })
 
@@ -1018,27 +1019,27 @@ export default function YearlyDualMap() {
           <h4 className="legend-title"><strong>Drug Overdose Rate</strong> <span className="font-normal">(per 100k, by percentile)</span></h4>
           <div className="flex gap-2 items-center flex-wrap">
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#e9d5ff'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#fed7aa'}}></div>
               <span>0-20th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#c084fc'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#fdba74'}}></div>
               <span>20-40th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#a855f7'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#fb923c'}}></div>
               <span>40-60th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#7e22ce'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#ea580c'}}></div>
               <span>60-75th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#6b21a8'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#b45309'}}></div>
               <span>75-90th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#4c1d95'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#7f1d1d'}}></div>
               <span>90-100th</span>
             </div>
             <div className="legend-item">
