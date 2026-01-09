@@ -61,6 +61,8 @@ export default function YearlyDualMap() {
   const [mapControlUrbanRural, setMapControlUrbanRural] = useState(false)
   const [clickedCounty, setClickedCounty] = useState<{fips: string, name: string, data: CountyData} | null>(null)
   const [showCountyReport, setShowCountyReport] = useState(false)
+  const [currentZoom, setCurrentZoom] = useState<number>(3.5)
+  const markersRef = useRef<mapboxgl.Marker[]>([])
 
   const years = ['2018', '2019', '2020', '2021', '2022', '2023']
 
@@ -153,6 +155,125 @@ export default function YearlyDualMap() {
     '31': 'NE', '32': 'NV', '33': 'NH', '34': 'NJ', '35': 'NM', '36': 'NY', '37': 'NC', '38': 'ND', '39': 'OH',
     '40': 'OK', '41': 'OR', '42': 'PA', '44': 'RI', '45': 'SC', '46': 'SD', '47': 'TN', '48': 'TX', '49': 'UT',
     '50': 'VT', '51': 'VA', '53': 'WA', '54': 'WV', '55': 'WI', '56': 'WY', '72': 'PR'
+  }
+
+  // State center coordinates for marker placement
+  const stateCenters: Record<string, [number, number]> = {
+    '01': [-86.9023, 32.8067], '02': [-152.4044, 61.3707], '04': [-111.0937, 34.0489], '05': [-92.3731, 34.9697],
+    '06': [-119.4179, 36.7783], '08': [-105.3111, 39.5501], '09': [-72.7554, 41.5978], '10': [-75.5071, 38.9108],
+    '11': [-77.0369, 38.9072], '12': [-81.6557, 27.9947], '13': [-83.5002, 32.1656], '15': [-157.4983, 21.0943],
+    '16': [-114.7420, 44.0682], '17': [-89.3985, 40.6331], '18': [-86.1349, 40.2672], '19': [-93.0977, 41.8780],
+    '20': [-98.4842, 39.0119], '21': [-84.2700, 37.8393], '22': [-91.9623, 30.9843], '23': [-69.4455, 45.2538],
+    '24': [-76.6413, 39.0458], '25': [-71.3824, 42.4072], '26': [-85.6024, 44.3148], '27': [-94.6859, 46.7296],
+    '28': [-89.3985, 32.3547], '29': [-92.1890, 37.9643], '30': [-110.3626, 46.8797], '31': [-99.9018, 41.4925],
+    '32': [-116.4194, 38.8026], '33': [-71.5724, 43.1939], '34': [-74.4057, 40.0583], '35': [-105.8701, 34.5199],
+    '36': [-75.4999, 43.2994], '37': [-79.0193, 35.7596], '38': [-100.7837, 47.5515], '39': [-82.9071, 40.4173],
+    '40': [-97.0929, 35.4676], '41': [-120.5542, 43.8041], '42': [-77.1945, 41.2033], '44': [-71.4774, 41.5801],
+    '45': [-81.1637, 33.8361], '46': [-100.3364, 43.9695], '47': [-86.5804, 35.5175], '48': [-99.9018, 31.9686],
+    '49': [-111.0937, 39.3210], '50': [-72.5778, 44.5588], '51': [-78.6569, 37.4316], '53': [-120.7401, 47.7511],
+    '54': [-80.4549, 38.5976], '55': [-89.6165, 43.7844], '56': [-107.2903, 43.0760], '72': [-66.5901, 18.2208]
+  }
+
+  // Aggregate drug deaths by state
+  const aggregateByState = (countyData: Record<string, CountyData>): Record<string, number> => {
+    const stateData: Record<string, number> = {}
+    Object.entries(countyData).forEach(([fips, data]) => {
+      if (!data.DrugDeaths || data.DrugDeaths === null) return
+      const stateFips = fips.substring(0, 2)
+      if (!stateData[stateFips]) {
+        stateData[stateFips] = 0
+      }
+      stateData[stateFips] += data.DrugDeaths
+    })
+    return stateData
+  }
+
+  // Create marker element with pastel red circle styling
+  const createMarkerElement = (number: number): HTMLDivElement => {
+    const el = document.createElement('div')
+    el.className = 'drug-death-marker'
+    el.style.cssText = `
+      background-color: #ffb3ba;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      color: white;
+      text-shadow: -1px -1px 0 #000,
+                    1px -1px 0 #000,
+                   -1px  1px 0 #000,
+                    1px  1px 0 #000;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      transition: transform 0.2s;
+    `
+    el.textContent = number >= 1000 ? `${(number / 1000).toFixed(1)}k` : String(number)
+    el.onmouseenter = () => { el.style.transform = 'scale(1.1)' }
+    el.onmouseleave = () => { el.style.transform = 'scale(1)' }
+    return el
+  }
+
+  // Update markers based on zoom level
+  const updateMarkers = (map: mapboxgl.Map, countyData: Record<string, CountyData>, zoom: number) => {
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.remove())
+    markersRef.current = []
+
+    if (zoom < 5) {
+      // Show state-level aggregated markers
+      const stateData = aggregateByState(countyData)
+      Object.entries(stateData).forEach(([stateFips, deaths]) => {
+        const center = stateCenters[stateFips]
+        if (!center) return
+
+        const el = createMarkerElement(deaths)
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat(center)
+          .addTo(map)
+        markersRef.current.push(marker)
+      })
+    } else {
+      // Show county-level markers
+      if (geojsonData && geojsonData.features) {
+        geojsonData.features.forEach((feature: any) => {
+          const geoidRaw = feature.properties.GEOID
+          const fips = geoidRaw ? String(geoidRaw).trim().padStart(5, '0') : null
+          if (!fips) return
+
+          const data = countyData[fips]
+          if (!data || !data.DrugDeaths || data.DrugDeaths === null) return
+
+          // Calculate county center from bounds
+          const coords = feature.geometry.coordinates
+          let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity
+
+          const processCoords = (coords: any): void => {
+            if (typeof coords[0] === 'number') {
+              minLng = Math.min(minLng, coords[0])
+              maxLng = Math.max(maxLng, coords[0])
+              minLat = Math.min(minLat, coords[1])
+              maxLat = Math.max(maxLat, coords[1])
+            } else {
+              coords.forEach(processCoords)
+            }
+          }
+
+          processCoords(coords)
+          const centerLng = (minLng + maxLng) / 2
+          const centerLat = (minLat + maxLat) / 2
+
+          const el = createMarkerElement(data.DrugDeaths)
+          const marker = new mapboxgl.Marker(el)
+            .setLngLat([centerLng, centerLat])
+            .addTo(map)
+          markersRef.current.push(marker)
+        })
+      }
+    }
   }
 
   const levenshteinDistance = (str1: string, str2: string): number => {
@@ -593,22 +714,22 @@ export default function YearlyDualMap() {
       if (value > -40) return '#2563eb'
       return '#1e3a8a'
     } else {
-      // Violet/purple gradient for drug death rate
+      // Brown/peach gradient for drug death rate
       // Based on percentiles for better distribution
       if (percentile !== undefined) {
-        if (percentile >= 90) return '#4c1d95' // Very dark purple
-        if (percentile >= 75) return '#6b21a8' // Dark purple
-        if (percentile >= 60) return '#7e22ce' // Medium-dark purple
-        if (percentile >= 40) return '#a855f7' // Medium purple
-        if (percentile >= 20) return '#c084fc' // Light purple
-        return '#e9d5ff' // Very light lavender
+        if (percentile >= 90) return '#8b4513' // Saddle brown (highest)
+        if (percentile >= 75) return '#b3663b' // Brown
+        if (percentile >= 60) return '#d9885c' // Tan/light brown
+        if (percentile >= 40) return '#ffb380' // Medium peach
+        if (percentile >= 20) return '#ffcca3' // Peach
+        return '#ffe4cc' // Light peach (lowest)
       }
       // Fallback to value-based (for backward compatibility)
-      if (value > 40) return '#4c1d95'
-      if (value > 30) return '#6b21a8'
-      if (value > 20) return '#7e22ce'
-      if (value > 10) return '#a855f7'
-      return '#e9d5ff'
+      if (value > 40) return '#8b4513'
+      if (value > 30) return '#b3663b'
+      if (value > 20) return '#d9885c'
+      if (value > 10) return '#ffb380'
+      return '#ffe4cc'
     }
   }
 
@@ -833,6 +954,21 @@ export default function YearlyDualMap() {
           }
         }
       })
+
+      // Add markers on drug map only
+      if (isDrugMap && countyData) {
+        const zoom = newMap.getZoom()
+        updateMarkers(newMap, countyData, zoom)
+
+        // Update markers when zoom changes
+        newMap.on('zoom', () => {
+          const currentZoom = newMap.getZoom()
+          setCurrentZoom(currentZoom)
+          if (yearlyData[selectedYear]) {
+            updateMarkers(newMap, yearlyData[selectedYear], currentZoom)
+          }
+        })
+      }
     })
 
     return newMap
@@ -846,6 +982,10 @@ export default function YearlyDualMap() {
     map2.current = createMap(mapContainer2.current, false)
 
     return () => {
+      // Clean up markers
+      markersRef.current.forEach(marker => marker.remove())
+      markersRef.current = []
+      // Clean up maps
       map1.current?.remove()
       map2.current?.remove()
       map1.current = null
@@ -861,6 +1001,10 @@ export default function YearlyDualMap() {
         if (map1.current && map2.current) {
           updateMapColors(map1.current, yearlyData[selectedYear], true)
           updateMapColors(map2.current, yearlyData[selectedYear], false)
+          // Update markers for the new year
+          if (map1.current) {
+            updateMarkers(map1.current, yearlyData[selectedYear], currentZoom)
+          }
         }
         return
       }
@@ -876,6 +1020,10 @@ export default function YearlyDualMap() {
         if (map1.current && map2.current) {
           updateMapColors(map1.current, yearData, true)
           updateMapColors(map2.current, yearData, false)
+          // Update markers for the new year
+          if (map1.current) {
+            updateMarkers(map1.current, yearData, currentZoom)
+          }
         }
       } catch (error) {
         console.error(`Error loading year ${selectedYear}:`, error)
@@ -1018,27 +1166,27 @@ export default function YearlyDualMap() {
           <h4 className="legend-title"><strong>Drug Overdose Rate</strong> <span className="font-normal">(per 100k, by percentile)</span></h4>
           <div className="flex gap-2 items-center flex-wrap">
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#e9d5ff'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#ffe4cc'}}></div>
               <span>0-20th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#c084fc'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#ffcca3'}}></div>
               <span>20-40th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#a855f7'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#ffb380'}}></div>
               <span>40-60th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#7e22ce'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#d9885c'}}></div>
               <span>60-75th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#6b21a8'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#b3663b'}}></div>
               <span>75-90th</span>
             </div>
             <div className="legend-item">
-              <div className="legend-color" style={{backgroundColor: '#4c1d95'}}></div>
+              <div className="legend-color" style={{backgroundColor: '#8b4513'}}></div>
               <span>90-100th</span>
             </div>
             <div className="legend-item">
